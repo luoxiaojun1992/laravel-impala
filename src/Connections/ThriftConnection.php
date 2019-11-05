@@ -1,22 +1,18 @@
 <?php
 
-namespace Lxj\Laravel\Impala;
+namespace Lxj\Laravel\Impala\Connections;
 
 use Closure;
+use Illuminate\Database\Events\StatementPrepared;
 use Illuminate\Database\QueryException;
 use Lxj\Laravel\Impala\Query\Grammars\Grammar as QueryGrammar;
 use Lxj\Laravel\Impala\Schema\Grammars\Grammar as SchemaGrammar;
 use ThriftSQL\Impala;
 
-class Connection extends \Illuminate\Database\Connection
+class ThriftConnection extends \Illuminate\Database\Connection
 {
     /** @var Impala */
     protected $impala;
-
-    public function __construct($pdo, $database = '', $tablePrefix = '', array $config = [])
-    {
-        parent::__construct($pdo, $database, $tablePrefix, $config);
-    }
 
     protected function reconnectIfMissingConnection()
     {
@@ -37,7 +33,7 @@ class Connection extends \Illuminate\Database\Connection
 
     public function reconnect()
     {
-        $this->impala->disconnect();
+        $this->disconnect();
         $this->impala->connect();
     }
 
@@ -46,10 +42,10 @@ class Connection extends \Illuminate\Database\Connection
         if (is_null($this->impala)) {
             return;
         }
-        
+
         $this->impala->disconnect();
     }
-    
+
     public function __destruct()
     {
         $this->disconnect();
@@ -62,7 +58,26 @@ class Connection extends \Illuminate\Database\Connection
                 return [];
             }
 
-            return $this->impala->queryAndFetchAll($this->prepareQuery($query, $bindings));
+            $statement = $this->prepareQuery($query, $bindings);
+            
+            $this->afterPrepare($statement);
+            
+            return $this->impala->queryAndFetchAll($statement);
+        });
+    }
+
+    public function cursor($query, $bindings = [], $useReadPdo = true)
+    {
+        return $this->run($query, $bindings, function ($query, $bindings) {
+            if ($this->pretending()) {
+                return [];
+            }
+
+            $statement = $this->prepareQuery($query, $bindings);
+
+            $this->afterPrepare($statement);
+
+            return $this->impala->getIterator($statement);
         });
     }
 
@@ -91,13 +106,20 @@ class Connection extends \Illuminate\Database\Connection
 
         foreach ($bindings as $key => $value) {
             if (is_string($value)) {
-                $bindings[$key] = '\'' . $value . '\'';
+                $bindings[$key] = ('\'' . $value . '\'');
             }
         }
 
         return $bindings;
     }
 
+    protected function afterPrepare($statement)
+    {
+        $this->event(new StatementPrepared(
+            $this, $statement
+        ));
+    }
+    
     protected function getDefaultQueryGrammar()
     {
         return $this->withTablePrefix(new QueryGrammar());

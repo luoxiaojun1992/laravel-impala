@@ -1,6 +1,6 @@
 <?php
 
-namespace Lxj\Laravel\Impala;
+namespace Lxj\Laravel\Impala\Connectors;
 
 use Illuminate\Database\Connectors\Connector;
 use Illuminate\Database\Connectors\ConnectorInterface;
