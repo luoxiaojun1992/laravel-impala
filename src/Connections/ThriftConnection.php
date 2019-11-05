@@ -70,7 +70,7 @@ class ThriftConnection extends \Illuminate\Database\Connection
     {
         return $this->run($query, $bindings, function ($query, $bindings) {
             if ($this->pretending()) {
-                return [];
+                return new \ArrayIterator();;
             }
 
             $statement = $this->prepareQuery($query, $bindings);

@@ -68,7 +68,7 @@ class ODBCConnection extends Connection
             }
 
             $rows = [];
-            while ($row = odbc_fetch_array($statement)) {
+            while (($row = odbc_fetch_array($statement)) !== false) {
                 $rows[] = $row;
             }
 
@@ -80,7 +80,7 @@ class ODBCConnection extends Connection
     {
         return $this->run($query, $bindings, function ($query, $bindings) {
             if ($this->pretending()) {
-                return [];
+                return new \ArrayIterator();
             }
 
             $bindings = $this->prepareBindings($bindings);
@@ -90,7 +90,7 @@ class ODBCConnection extends Connection
             $this->afterPrepare($statement);
 
             if (!odbc_execute($statement, $bindings)) {
-                return [];
+                return new \ArrayIterator();
             }
 
             while (($row = odbc_fetch_array($statement)) !== false) {
