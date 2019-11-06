@@ -9,6 +9,6 @@ class ODBCConnector extends Connector implements ConnectorInterface
 {
     public function connect(array $config)
     {
-        return odbc_connect('impala', '', '');
+        return odbc_connect($config['dns'] ?? 'impala', '', '');
     }
 }
